@@ -4,8 +4,6 @@ import { PNG } from 'pngjs';
 const img = PNG.sync.read(fs.readFileSync('web-kerilla/kerilla-map.png'));
 const W=img.width, H=img.height, D=img.data;
 const lum=(x,y)=>{ const i=(y*W+x)*4; return D[i]*0.299+D[i+1]*0.587+D[i+2]*0.114; };
-// Dakwat HITAM/GREY sahaja (nombor). Tolak teks berwarna (merah lot, dll).
-const ink=(x,y)=>{ const i=(y*W+x)*4; const r=D[i],g=D[i+1],b=D[i+2]; const mx=Math.max(r,g,b), mn=Math.min(r,g,b); return (mx-mn)<45; };
 
 // flood-fill komponen gelap (hitam = nombor kontur)
 console.log('flood-fill...');
@@ -15,17 +13,17 @@ for(let y=1;y<H-1;y++){
   for(let x=1;x<W-1;x++){
     const idx=y*W+x;
     if(seen[idx]) continue;
-    if(lum(x,y)>=110 || !ink(x,y)) continue;
+    if(lum(x,y)>=110) continue;
     let stack=[idx]; seen[idx]=1;
     let minx=x,maxx=x,miny=y,maxy=y,cnt=0;
     while(stack.length){
       const i2=stack.pop(); cnt++;
       const cx=i2%W, cy=(i2/W)|0;
       if(cx<minx)minx=cx; if(cx>maxx)maxx=cx; if(cy<miny)miny=cy; if(cy>maxy)maxy=cy;
-      if(cx>0&&!seen[i2-1]&&lum(cx-1,cy)<110 && ink(cx-1,cy)){seen[i2-1]=1;stack.push(i2-1);}
-      if(cx<W-1&&!seen[i2+1]&&lum(cx+1,cy)<110 && ink(cx+1,cy)){seen[i2+1]=1;stack.push(i2+1);}
-      if(cy>0&&!seen[i2-W]&&lum(cx,cy-1)<110 && ink(cx,cy-1)){seen[i2-W]=1;stack.push(i2-W);}
-      if(cy<H-1&&!seen[i2+W]&&lum(cx,cy+1)<110 && ink(cx,cy+1)){seen[i2+W]=1;stack.push(i2+W);}
+      if(cx>0&&!seen[i2-1]&&lum(cx-1,cy)<110){seen[i2-1]=1;stack.push(i2-1);}
+      if(cx<W-1&&!seen[i2+1]&&lum(cx+1,cy)<110){seen[i2+1]=1;stack.push(i2+1);}
+      if(cy>0&&!seen[i2-W]&&lum(cx,cy-1)<110){seen[i2-W]=1;stack.push(i2-W);}
+      if(cy<H-1&&!seen[i2+W]&&lum(cx,cy+1)<110){seen[i2+W]=1;stack.push(i2+W);}
     }
     const w=maxx-minx+1, h=maxy-miny+1;
     // digit: w 6-46, h 8-32, px 12-600
@@ -64,7 +62,7 @@ const PAD=3;
 let cursorX=0, cursorY=0, rowH=0, AW=1024, AH=1024;
 const items=[];
 const atlas=new PNG({width:AW,height:AH});
-for(let i=0;i<AW*AH;i++){atlas.data[i*4]=255;atlas.data[i*4+1]=255;atlas.data[i*4+2]=255;atlas.data[i*4+3]=0;}
+for(let i=0;i<AW*AH;i++){atlas.data[i*4]=255;atlas.data[i*4+1]=255;atlas.data[i*4+2]=255;atlas.data[i*4+3]=255;}
 for(const g of labels){
   const sw=g.w+PAD*2, sh=g.h+PAD*2;
   if(cursorX+sw>AW){ cursorX=0; cursorY+=rowH+1; rowH=0; }
@@ -75,19 +73,7 @@ for(const g of labels){
       const di=((cursorY+yy)*AW+(cursorX+xx))*4;
       if(sx<0||sy<0||sx>=W||sy>=H){ continue; }
       const si=(sy*W+sx)*4;
-      // Kekalkan HANYA teks akromatik gelap (nombor hitam/kelabu).
-      // Piksel berwarna (latar merah lot / cyan sungai / hijau) jadi LUTSINAR.
-      const pr=D[si], pg=D[si+1], pb=D[si+2];
-      const pl=(pr*0.299+pg*0.587+pb*0.114);
-      const pmx=Math.max(pr,pg,pb), pmn=Math.min(pr,pg,pb);
-      const kroma = pmx-pmn;                     // berwarna (bukan hitam)
-      // Berwarna (kroma>=40) => sentiasa lutsinar, walaupun gelap.
-      // Teks nombor adalah AKROMATIK (hitam/kelabu, kroma kecil).
-      let a = 0;
-      if(kroma < 40){
-        a = pl<90 ? 255 : (pl<140 ? Math.round(255*(140-pl)/50) : 0);
-      }
-      atlas.data[di]=pr; atlas.data[di+1]=pg; atlas.data[di+2]=pb; atlas.data[di+3]=a;
+      atlas.data[di]=D[si]; atlas.data[di+1]=D[si+1]; atlas.data[di+2]=D[si+2]; atlas.data[di+3]=255;
     }
   }
   items.push({x:g.x+g.w/2, y:g.y+g.h/2, w:g.w, h:g.h, sx:cursorX, sy:cursorY, sw:sw, sh:sh});
