@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Diagnostik GPS — Kerilla</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;padding:16px;padding-top:max(16px,env(safe-area-inset-top));
+    background:#0b1220;color:#e8eefc;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:#8fa3c8;font-size:12px;margin-bottom:16px}
+  .card{background:#101b30;border:1px solid #24354f;border-radius:12px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:13px;margin:0 0 10px;color:#8fa3c8;text-transform:uppercase;letter-spacing:.5px}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #1b2b45;font-size:13px}
+  .row:last-child{border-bottom:0}
+  .row .k{color:#8fa3c8}
+  .row .v{font-variant-numeric:tabular-nums;text-align:right;word-break:break-all;max-width:60%}
+  .ok{color:#6fe08a}.bad{color:#ff6b6b}.warn{color:#ffc857}
+  button{width:100%;padding:14px;border-radius:11px;border:0;font-size:15px;font-weight:600;
+    cursor:pointer;margin-top:8px;background:#007aff;color:#fff}
+  button.ghost{background:#1b2a44;color:#cfe0ff}
+  button:active{transform:scale(.98)}
+  #log{background:#0a1120;border:1px solid #1b2b45;border-radius:10px;padding:10px;
+    font:12px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap;max-height:260px;overflow:auto;color:#9db0d0}
+  .big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+  .hint{background:#16233c;border-left:3px solid #007aff;padding:10px 12px;border-radius:0 8px 8px 0;
+    font-size:12.5px;color:#cfe0ff;margin-top:10px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>🔍 Diagnostik GPS</h1>
+<div class="sub">Untuk peta Kerilla — tentukan kenapa lokasi tidak dikesan</div>
+
+<div class="card">
+  <h2>Status Pelayar</h2>
+  <div class="row"><span class="k">Secure context (HTTPS)</span><span class="v" id="d-secure">—</span></div>
+  <div class="row"><span class="k">navigator.geolocation</span><span class="v" id="d-geo">—</span></div>
+  <div class="row"><span class="k">Permissions API</span><span class="v" id="d-perm">—</span></div>
+  <div class="row"><span class="k">Status kebenaran</span><span class="v" id="d-state">—</span></div>
+  <div class="row"><span class="k">Dalam iframe?</span><span class="v" id="d-frame">—</span></div>
+  <div class="row"><span class="k">User agent</span><span class="v" id="d-ua" style="font-size:11px"></span></div>
+</div>
+
+<div class="card">
+  <h2>Ujian Lokasi</h2>
+  <div class="row"><span class="k">Latitude</span><span class="v big" id="d-lat">—</span></div>
+  <div class="row"><span class="k">Longitude</span><span class="v big" id="d-lon">—</span></div>
+  <div class="row"><span class="k">Ketepatan</span><span class="v" id="d-acc">—</span></div>
+  <div class="row"><span class="k">Masa ambil</span><span class="v" id="d-took">—</span></div>
+  <div class="row"><span class="k">Dalam kawasan Kerilla?</span><span class="v" id="d-inmap">—</span></div>
+  <button id="b1">📍 Uji GPS (ketepatan rendah, pantas)</button>
+  <button id="b2">🛰️ Uji GPS (ketepatan tinggi, sabar)</button>
+  <button id="b3" class="ghost">🔄 Minta kebenaran semula</button>
+</div>
+
+<div class="card">
+  <h2>Log</h2>
+  <div id="log">Menunggu...</div>
+</div>
+
+<div class="hint" id="hint"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const log = (m) => {
+  const el = $('#log');
+  if (el.textContent === 'Menunggu...') el.textContent = '';
+  const t = new Date().toTimeString().slice(0,8);
+  el.textContent += '[' + t + '] ' + m + '\n';
+  el.scrollTop = el.scrollHeight;
+};
+
+// ===== Diagnostik asas =====
+const secure = window.isSecureContext;
+$('#d-secure').innerHTML = secure ? '<span class="ok">YA ✅</span>' : '<span class="bad">TIDAK ❌ (GPS disekat)</span>';
+const hasGeo = !!navigator.geolocation;
+$('#d-geo').innerHTML = hasGeo ? '<span class="ok">ADA ✅</span>' : '<span class="bad">TIADA ❌</span>';
+$('#d-frame').innerHTML = (window.self !== window.top) ? '<span class="warn">YA (boleh sekat GPS)</span>' : 'Tidak';
+$('#d-ua').textContent = navigator.userAgent.slice(0, 70);
+
+if (navigator.permissions && navigator.permissions.query) {
+  $('#d-perm').innerHTML = '<span class="ok">ADA ✅</span>';
+  navigator.permissions.query({ name: 'geolocation' }).then(p => {
+    setPerm(p.state);
+    p.onchange = () => setPerm(p.state);
+  }).catch(e => log('Permissions query gagal: ' + e.message));
+} else {
+  $('#d-perm').innerHTML = '<span class="warn">TIADA</span>';
+  $('#d-state').textContent = 'tidak dapat dibaca';
+}
+function setPerm(state) {
+  const cls = state === 'granted' ? 'ok' : state === 'denied' ? 'bad' : 'warn';
+  $('#d-state').innerHTML = '<span class="' + cls + '">' + state.toUpperCase() + '</span>';
+  if (state === 'denied') {
+    $('#hint').innerHTML = '<b>⚠ Kebenaran lokasi DITOLAK.</b><br>' +
+      'Pelayar menyimpan tetapan ini. Perlu buka semula secara manual:<br><br>' +
+      '<b>iPhone/Safari:</b> Settings → Safari → Location → Allow, atau tap <b>aA</b> di bar alamat → Website Settings → Location → Allow<br><br>' +
+      '<b>Android/Chrome:</b> tap ikon 🔒 di bar alamat → Permissions → Location → Allow, kemudian <b>reload</b>';
+  }
+}
+
+// ===== Ujian GPS =====
+function testGPS(opts, label) {
+  if (!hasGeo) { log('❌ navigator.geolocation tiada'); return; }
+  log('--- ' + label + ' ---');
+  log('Parameter: ' + JSON.stringify(opts));
+  const t0 = Date.now();
+  let done = false;
+  const timer = setInterval(() => {
+    if (!done) log('  ...menunggu ' + ((Date.now()-t0)/1000).toFixed(0) + 's');
+  }, 5000);
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      done = true; clearInterval(timer);
+      const ms = Date.now() - t0;
+      const c = pos.coords;
+      log('✅ BERJAYA dalam ' + ms + ' ms');
+      log('   lat=' + c.latitude.toFixed(7) + ' lon=' + c.longitude.toFixed(7));
+      log('   accuracy=±' + Math.round(c.accuracy) + ' m');
+      $('#d-lat').textContent = c.latitude.toFixed(6);
+      $('#d-lon').textContent = c.longitude.toFixed(6);
+      $('#d-acc').textContent = '±' + Math.round(c.accuracy) + ' m';
+      $('#d-took').textContent = (ms/1000).toFixed(1) + ' s';
+
+      // Semak dalam kawasan Kerilla
+      const B = { minLat: 5.67194, maxLat: 5.73060, minLon: 102.06333, maxLon: 102.14447 };
+      const inside = c.latitude >= B.minLat && c.latitude <= B.maxLat &&
+                     c.longitude >= B.minLon && c.longitude <= B.maxLon;
+      $('#d-inmap').innerHTML = inside
+        ? '<span class="ok">YA ✅ Anda dalam peta</span>'
+        : '<span class="warn">TIDAK — di luar bbox peta</span>';
+      log('   dalam kawasan Kerilla: ' + (inside ? 'YA' : 'TIDAK'));
+
+      // Jarak ke tengah peta
+      const midLat = (B.minLat+B.maxLat)/2, midLon = (B.minLon+B.maxLon)/2;
+      const R = 6371008.8, rad = d => d*Math.PI/180;
+      const dLat = rad(c.latitude-midLat), dLon = rad(c.longitude-midLon);
+      const a = Math.sin(dLat/2)**2 + Math.cos(rad(midLat))*Math.cos(rad(c.latitude))*Math.sin(dLon/2)**2;
+      const dist = 2*R*Math.asin(Math.min(1,Math.sqrt(a)));
+      log('   jarak ke tengah peta: ' + (dist/1000).toFixed(2) + ' km');
+    },
+    (err) => {
+      done = true; clearInterval(timer);
+      const ms = Date.now() - t0;
+      log('❌ GAGAL selepas ' + (ms/1000).toFixed(1) + ' s');
+      log('   code=' + err.code + ' (' + ['','PERMISSION_DENIED','POSITION_UNAVAILABLE','TIMEOUT'][err.code] + ')');
+      log('   message=' + err.message);
+      const hints = {
+        1: 'Kebenaran ditolak. Buka tetapan laman → Location → Allow, kemudian reload.',
+        2: 'Posisi tidak tersedia. Pastikan Location/GPS telefon HIDUP, dan keluar ke tempat terbuka.',
+        3: 'Timeout. GPS satelit perlukan masa (cold start 30-60s). Cuba lagi atau keluar rumah.',
+      };
+      $('#hint').innerHTML = '<b>⚠ ' + (hints[err.code]||'') + '</b>';
+    },
+    opts
+  );
+}
+
+$('#b1').onclick = () => testGPS({ enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }, 'Ketepatan rendah');
+$('#b2').onclick = () => testGPS({ enableHighAccuracy: true, timeout: 60000, maximumAge: 0 }, 'Ketepatan tinggi');
+
+$('#b3').onclick = async () => {
+  log('Meminta kebenaran semula...');
+  try {
+    const s = await navigator.permissions.query({ name: 'geolocation' });
+    log('status semasa: ' + s.state);
+    if (s.state === 'denied') {
+      log('Pelayar tidak benarkan minta semula secara program. Buka tetapan manual.');
+    }
+  } catch (e) { log('gagal: ' + e.message); }
+  testGPS({ enableHighAccuracy: true, timeout: 30000 }, 'Cuba semula');
+};
+
+log('Diagnostik dimuat. Skema: ' + location.protocol + '//' + location.host);
+if (!secure) log('⚠ AMARAN: bukan secure context — GPS akan disekat');
+</script>
+</body>
+</html>

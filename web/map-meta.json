@@ -1,0 +1,150 @@
+{
+  "tileSize": 256,
+  "width": 10000,
+  "height": 10000,
+  "zMin": 0,
+  "zMax": 6,
+  "levels": [
+    {
+      "z": 0,
+      "scale": 64,
+      "width": 157,
+      "height": 157,
+      "tilesX": 1,
+      "tilesY": 1,
+      "tiles": 1,
+      "transform": {
+        "A": 128,
+        "B": 0,
+        "C": 550001,
+        "D": 0,
+        "E": -128,
+        "F": 4769999
+      },
+      "metersPerPixel": 128
+    },
+    {
+      "z": 1,
+      "scale": 32,
+      "width": 313,
+      "height": 313,
+      "tilesX": 2,
+      "tilesY": 2,
+      "tiles": 4,
+      "transform": {
+        "A": 64,
+        "B": 0,
+        "C": 550001,
+        "D": 0,
+        "E": -64,
+        "F": 4769999
+      },
+      "metersPerPixel": 64
+    },
+    {
+      "z": 2,
+      "scale": 16,
+      "width": 625,
+      "height": 625,
+      "tilesX": 3,
+      "tilesY": 3,
+      "tiles": 9,
+      "transform": {
+        "A": 32,
+        "B": 0,
+        "C": 550001,
+        "D": 0,
+        "E": -32,
+        "F": 4769999
+      },
+      "metersPerPixel": 32
+    },
+    {
+      "z": 3,
+      "scale": 8,
+      "width": 1250,
+      "height": 1250,
+      "tilesX": 5,
+      "tilesY": 5,
+      "tiles": 25,
+      "transform": {
+        "A": 16,
+        "B": 0,
+        "C": 550001,
+        "D": 0,
+        "E": -16,
+        "F": 4769999
+      },
+      "metersPerPixel": 16
+    },
+    {
+      "z": 4,
+      "scale": 4,
+      "width": 2500,
+      "height": 2500,
+      "tilesX": 10,
+      "tilesY": 10,
+      "tiles": 100,
+      "transform": {
+        "A": 8,
+        "B": 0,
+        "C": 550001,
+        "D": 0,
+        "E": -8,
+        "F": 4769999
+      },
+      "metersPerPixel": 8
+    },
+    {
+      "z": 5,
+      "scale": 2,
+      "width": 5000,
+      "height": 5000,
+      "tilesX": 20,
+      "tilesY": 20,
+      "tiles": 400,
+      "transform": {
+        "A": 4,
+        "B": 0,
+        "C": 550001,
+        "D": 0,
+        "E": -4,
+        "F": 4769999
+      },
+      "metersPerPixel": 4
+    },
+    {
+      "z": 6,
+      "scale": 1,
+      "width": 10000,
+      "height": 10000,
+      "tilesX": 40,
+      "tilesY": 40,
+      "tiles": 1600,
+      "transform": {
+        "A": 2,
+        "B": 0,
+        "C": 550001,
+        "D": 0,
+        "E": -2,
+        "F": 4769999
+      },
+      "metersPerPixel": 2
+    }
+  ],
+  "sourceTransform": {
+    "A": 2,
+    "B": 0,
+    "C": 550001,
+    "D": 0,
+    "E": -2,
+    "F": 4769999
+  },
+  "builtAt": "2026-09-26T18:44:08.902Z",
+  "buildMs": 22483,
+  "totalTiles": 2139,
+  "totalBytes": 7168738,
+  "crs": "EPSG:32610",
+  "gsdMeters": 2,
+  "title": "POC BIG Topo Map (100 MP, UTM 10N)"
+}

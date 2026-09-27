@@ -1,0 +1,17 @@
+# Connector untuk POC peta — tunnel "peta-poc"
+tunnel: 3e69afb1-f905-4ab6-b555-b3ec3aa059a2
+credentials-file: /home/sewanode/kaihara/.secrets/peta-tunnel-creds.json
+no-autoupdate: true
+metrics: 127.0.0.1:20243
+ingress:
+  - hostname: peta.nakhodacloud.top
+    service: http://127.0.0.1:18742
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+  - hostname: kerilla.nakhodacloud.top
+    service: http://127.0.0.1:18745
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+  - service: http_status:404

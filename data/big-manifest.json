@@ -1,0 +1,16 @@
+{
+  "id": "poc-big-001",
+  "title": "POC BIG Topo Map (100 MP, UTM 10N)",
+  "widthPx": 10000,
+  "heightPx": 10000,
+  "crs": "EPSG:32610",
+  "gsdMeters": 2,
+  "worldFileParams": {
+    "A": 2,
+    "D": 0,
+    "B": 0,
+    "E": -2,
+    "C": 550001,
+    "F": 4769999
+  }
+}

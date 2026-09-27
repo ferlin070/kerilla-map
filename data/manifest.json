@@ -1,0 +1,34 @@
+{
+  "id": "poc-topo-001",
+  "title": "POC Topo Map (UTM 10N)",
+  "handle": "poc-topo-map-utm10n",
+  "vendor": "POC Publisher",
+  "productType": "digital map",
+  "priceCents": 0,
+  "currency": "USD",
+  "status": "published",
+  "tags": [
+    "activity:Hiking",
+    "country:United States of America",
+    "language:English",
+    "historical:boolean:false"
+  ],
+  "crs": "EPSG:32610",
+  "widthPx": 1024,
+  "heightPx": 768,
+  "gsdMeters": 5,
+  "files": {
+    "raster": "topo-map.tif",
+    "worldFile": "topo-map.tfw",
+    "projection": "topo-map.prj",
+    "preview": "topo-map-preview.png"
+  },
+  "worldFileParams": {
+    "A": 5,
+    "D": 0,
+    "B": 0,
+    "E": -5,
+    "C": 558002.5,
+    "F": 4759997.5
+  }
+}

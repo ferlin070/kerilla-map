@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+let s=fs.readFileSync('app-core.js','utf8');
+const NL=String.fromCharCode(10);
+
+const old = '  // ===== LABEL NOMBER TASK (sentiasa nampak) =====\n  if(LBL && LBL.length){\n    // label dirender pada saiz asal peta (kali k = paparan sebenar),\n    // dengan saiz MINIMUM supaya sentiasa boleh dibaca.\n    const minh=16;   // px skrin minimum untuk label\n    const im=$("#lblatlas");\n    for(const lb of LBL){\n      // kedudukan pusat label dalam koordinat peta penuh (3408x2452)\n      // => dalam viewport: P(lb.x, lb.y)\n      const q=P(lb.x, lb.y);\n      if(q.x<-40||q.y<-40||q.x>S.vw+40||q.y>S.vh+40) continue;\n      // saiz label pada skrin = lb.w * (k/sc) kerna lb dalam koordinat level penuh\n      const fsc=k/sc;   // faktor skala sebenar dunia ke skrin\n      let w=lb.sw*fsc, h=lb.sh*fsc;\n      let scale=1;\n      if(h<minh){ scale=minh/h; w*=scale; h=minh; }\n      if(h>90) continue;   // terlalu besar (zoom jauh masuk) - biar peta asal tunjuk\n      const e=document.createElement("div"); e.className="lblnum";\n      e.style.left=(q.x-w/2)+"px"; e.style.top=(q.y-h/2)+"px";\n      e.style.width=w+"px"; e.style.height=h+"px";\n      e.style.backgroundImage="url(labels.png?v="+APP_V+")";\n      e.style.backgroundPosition=(-lb.sx*scale)+"px "+(-lb.sy*scale)+"px";\n      e.style.backgroundSize=(1024*scale)+"px "+(1024*scale)+"px";\n      ov.appendChild(e);\n    }\n  }';
+
+const nw = '  // ===== LABEL NOMBER (sentiasa nampak + de-clutter) =====\n  if(LBL && LBL.length){\n    const minh=14;            // saiz min skrin untuk label (boleh baca)\n    const maxh=64;            // saiz max (elak terlalu besar)\n    const placed=[];          // kotak label yang sudah diletak (untuk elak tindih)\n    for(const lb of LBL){\n      const q=P(lb.x, lb.y);\n      if(q.x<-60||q.y<-60||q.x>S.vw+60||q.y>S.vh+60) continue;\n      const fsc=k/sc;         // skala dunia -> skrin\n      let w=lb.sw*fsc, h=lb.sh*fsc;\n      let scale=1;\n      if(h<minh){ scale=minh/h; w*=scale; h=minh; }\n      if(h>maxh) continue;    // zoom sangat dalam - peta asal sudah tunjuk\n      const L=q.x-w/2, T=q.y-h/2;\n      // de-clutter: skip jika bertindih dengan label sedia ada\n      let overlap=false;\n      for(const p of placed){\n        if(L < p.x+p.w && L+w > p.x && T < p.y+p.h && T+h > p.y){ overlap=true; break; }\n      }\n      if(overlap) continue;\n      placed.push({x:L, y:T, w:w, h:h});\n      const e=document.createElement("div"); e.className="lblnum";\n      e.style.left=L+"px"; e.style.top=T+"px";\n      e.style.width=w+"px"; e.style.height=h+"px";\n      e.style.backgroundImage="url(labels.png?v="+APP_V+")";\n      e.style.backgroundPosition=(-lb.sx*scale)+"px "+(-lb.sy*scale)+"px";\n      e.style.backgroundSize=(1024*scale)+"px "+(1024*scale)+"px";\n      ov.appendChild(e);\n    }\n  }';
+
+if(!s.includes(old)){
+  console.log('GAGAL: block lama tidak dijumpai');
+} else {
+  s=s.replace(old, nw);
+  fs.writeFileSync('app-core.js', s);
+  console.log('OK: label de-clutter + minh14 + maxh64');
+}

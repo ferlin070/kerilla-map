@@ -1,0 +1,59 @@
+{
+  "title": "073 Kerilla Aug26 Task Map",
+  "author": "Ide Dummah Bin Idris",
+  "producer": "QGIS 3.44.6-Solothurn",
+  "mediaBox": {
+    "x0": 0,
+    "y0": 0,
+    "x1": 842,
+    "y1": 595,
+    "width": 842,
+    "height": 595
+  },
+  "normalisedLpts": [
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1
+  ],
+  "lptsPoints": [
+    0,
+    595,
+    0,
+    0,
+    842,
+    0,
+    842,
+    595
+  ],
+  "gpts": [
+    5.730141158301799,
+    102.05765693919196,
+    5.671238621921752,
+    102.05795714902061,
+    5.67165603634133,
+    102.14117743207812,
+    5.730562935814136,
+    102.14088568553105
+  ],
+  "wkt": "PROJCS[\"WGS_1984_UTM_Zone_48N\",GEOGCS[\"GCS_WGS_1984\",DATUM[\"D_WGS_1984\",SPHEROID[\"WGS_1984\",6378137.0,298.257223563]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"False_Easting\",500000.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",105.0],PARAMETER[\"Scale_Factor\",0.9996],PARAMETER[\"Latitude_Of_Origin\",0.0],UNIT[\"Meter\",1.0]],VERTCS[\"EGM2008_height\",VDATUM[\"EGM2008_Geoid\"],PARAMETER[\"Vertical_Shift\",0.0],PARAMETER[\"Direction\",1.0],UNIT[\"Meter\",1.0]]",
+  "transform": {
+    "a": 0.00009884146638751938,
+    "b": -4.974423325547346e-7,
+    "c": 102.05795503320023,
+    "d": 4.983325011399353e-7,
+    "e": 0.00009899952592676811,
+    "f": 5.671237531148562
+  },
+  "accuracyM": 0.26396610792324354,
+  "bbox": {
+    "minLat": 5.671237531148562,
+    "maxLat": 5.730561845040949,
+    "minLon": 102.05765905501237,
+    "maxLon": 102.14117954789852
+  }
+}

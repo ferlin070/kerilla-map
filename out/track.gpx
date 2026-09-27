@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="avenza-poc" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><name>POC Track</name><trkseg>
+    <trkpt lat="42.9624398" lon="-122.2764992"><time>2026-01-01T00:00:00Z</time></trkpt>
+    <trkpt lat="42.9624706" lon="-122.2764681"><time>2026-01-01T00:00:03Z</time></trkpt>
+    <trkpt lat="42.9624740" lon="-122.2764053"><time>2026-01-01T00:00:06Z</time></trkpt>
+    <trkpt lat="42.9624866" lon="-122.2763598"><time>2026-01-01T00:00:09Z</time></trkpt>
+    <trkpt lat="42.9624876" lon="-122.2763219"><time>2026-01-01T00:00:12Z</time></trkpt>
+    <trkpt lat="42.9625117" lon="-122.2762598"><time>2026-01-01T00:00:15Z</time></trkpt>
+    <trkpt lat="42.9625040" lon="-122.2762271"><time>2026-01-01T00:00:18Z</time></trkpt>
+    <trkpt lat="42.9625108" lon="-122.2761692"><time>2026-01-01T00:00:21Z</time></trkpt>
+    <trkpt lat="42.9624974" lon="-122.2761167"><time>2026-01-01T00:00:24Z</time></trkpt>
+    <trkpt lat="42.9624706" lon="-122.2760512"><time>2026-01-01T00:00:27Z</time></trkpt>
+    <trkpt lat="42.9624670" lon="-122.2760098"><time>2026-01-01T00:00:30Z</time></trkpt>
+    <trkpt lat="42.9624503" lon="-122.2759540"><time>2026-01-01T00:00:33Z</time></trkpt>
+    <trkpt lat="42.9624421" lon="-122.2759315"><time>2026-01-01T00:00:36Z</time></trkpt>
+    <trkpt lat="42.9624201" lon="-122.2758645"><time>2026-01-01T00:00:39Z</time></trkpt>
+    <trkpt lat="42.9623966" lon="-122.2758374"><time>2026-01-01T00:00:42Z</time></trkpt>
+    <trkpt lat="42.9623702" lon="-122.2757985"><time>2026-01-01T00:00:45Z</time></trkpt>
+    <trkpt lat="42.9623613" lon="-122.2757300"><time>2026-01-01T00:00:48Z</time></trkpt>
+    <trkpt lat="42.9623623" lon="-122.2756823"><time>2026-01-01T00:00:51Z</time></trkpt>
+    <trkpt lat="42.9623409" lon="-122.2756447"><time>2026-01-01T00:00:54Z</time></trkpt>
+    <trkpt lat="42.9623264" lon="-122.2755939"><time>2026-01-01T00:00:57Z</time></trkpt>
+    <trkpt lat="42.9623251" lon="-122.2755489"><time>2026-01-01T00:01:00Z</time></trkpt>
+  </trkseg></trk>
+</gpx>
