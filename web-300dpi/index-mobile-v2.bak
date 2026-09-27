@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>073 Kerilla — Peta Offline</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#101b30ee; --line:#24354f; --ink:#e8eefc; --dim:#8fa3c8;
+    --blue:#007aff; --green:#6fe08a; --amber:#ffc857; --red:#ff6b6b;
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    overscroll-behavior:none;touch-action:none}
+
+  /* ---------- PETA ---------- */
+  #map{position:fixed;inset:0;overflow:hidden;touch-action:none;background:#16202f;cursor:grab}
+  #map.dragging{cursor:grabbing}
+  #world{position:absolute;transform-origin:0 0;will-change:transform}
+  #world img{position:absolute;pointer-events:none;user-select:none;-webkit-user-drag:none}
+  .ovl{position:absolute;inset:0;pointer-events:none;z-index:5}
+
+  /* titik GPS */
+  .gps{position:absolute;z-index:12;pointer-events:none}
+  .gps .halo{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
+    background:#007aff26;border:1px solid #007aff55;animation:pulse 2.4s ease-out infinite}
+  .gps .dot{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
+    background:var(--blue);border:3px solid #fff;box-shadow:0 2px 8px #000a}
+  @keyframes pulse{0%{transform:scale(.55);opacity:.95}70%{transform:scale(1.4);opacity:0}100%{opacity:0}}
+  .pin{position:absolute;z-index:11;pointer-events:none;transform:translate(-50%,-100%);
+    font-size:28px;filter:drop-shadow(0 2px 4px #0009)}
+  .gf{position:absolute;z-index:9;border-radius:50%;border:2px dashed var(--green);
+    background:#6fe08a1a;pointer-events:none}
+  .ml{position:absolute;z-index:10;height:3px;background:var(--amber);transform-origin:0 50%;
+    border-radius:2px;pointer-events:none}
+  #mlabel{position:absolute;z-index:13;background:var(--amber);color:#1a1206;font-weight:800;
+    font-size:12px;padding:3px 9px;border-radius:8px;pointer-events:none;
+    transform:translate(-50%,-170%);white-space:nowrap;box-shadow:0 2px 8px #0007}
+
+  /* ---------- BAR ATAS ---------- */
+  #top{position:fixed;top:0;left:0;right:0;z-index:30;
+    padding:calc(8px + var(--sat)) calc(10px + var(--sar)) 8px calc(10px + var(--sal));
+    display:flex;gap:8px;align-items:flex-start;
+    background:linear-gradient(var(--bg) 55%, transparent);pointer-events:none}
+  #top > *{pointer-events:auto}
+  #brand{flex:1;min-width:0}
+  #brand b{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;letter-spacing:-.2px}
+  #brand span{display:block;font-size:11px;color:var(--dim);margin-top:1px}
+  #gpschip{background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--line);
+    border-radius:999px;padding:7px 12px;font-size:11.5px;white-space:nowrap;font-weight:600}
+  #gpschip.on{border-color:#2e6b45;background:#0f2a1ce8;color:var(--green)}
+
+  /* ---------- KAD STATUS (boleh lipat) ---------- */
+  #panel{position:fixed;left:calc(10px + var(--sal));
+    bottom:calc(200px + var(--sab));z-index:25;width:min(250px, 66vw);
+    background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);
+    border-radius:14px;overflow:hidden;box-shadow:0 6px 24px #0006}
+  #phead{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;
+    font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:700;
+    cursor:pointer}
+  #pbody{padding:0 12px 11px}
+  #panel.min #pbody{display:none}
+  .row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0;
+    border-bottom:1px solid #1b2b45}
+  .row:last-child{border-bottom:0}
+  .row .k{color:var(--dim)}
+  .row .v{font-variant-numeric:tabular-nums;font-weight:600}
+
+  /* ---------- BUTANG KANAN ---------- */
+  #right{position:fixed;right:calc(10px + var(--sar));bottom:calc(200px + var(--sab));
+    z-index:25;display:flex;flex-direction:column;gap:12px}
+  #right button{width:62px;height:62px;border-radius:19px;border:1px solid var(--line);
+    background:var(--panel);backdrop-filter:blur(12px);color:var(--ink);font-size:29px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    box-shadow:0 4px 16px #0006;transition:transform .1s, background .15s}
+  #right button:active{transform:scale(.9)}
+  #right button.on{background:var(--blue);border-color:#3d9bff}
+
+  /* kompas */
+  #compass{width:62px;height:62px;border-radius:50%;border:1px solid var(--line);
+    background:var(--panel);backdrop-filter:blur(12px);display:flex;align-items:center;
+    justify-content:center;font-size:11px;font-weight:800;color:var(--ink);
+    box-shadow:0 4px 16px #0006}
+  #compass .needle{color:var(--red);font-size:20px;line-height:1}
+
+  /* ---------- BAR BAWAH ---------- */
+  #dock{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    padding:9px calc(10px + var(--sar)) calc(9px + var(--sab)) calc(10px + var(--sal));
+    background:linear-gradient(transparent, var(--bg) 32%);pointer-events:none}
+  #tools{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+    padding-bottom:3px;pointer-events:auto}
+  #tools::-webkit-scrollbar{display:none}
+  .tool{flex:0 0 auto;background:var(--panel);backdrop-filter:blur(12px);
+    border:1px solid var(--line);color:var(--ink);border-radius:17px;
+    padding:13px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;
+    display:flex;flex-direction:column;align-items:center;gap:6px;min-width:84px;
+    box-shadow:0 4px 16px #0006;transition:transform .1s, background .15s}
+  .tool:active{transform:scale(.93)}
+  .tool .ico{font-size:26px;line-height:1}
+  .tool.on{background:var(--blue);border-color:#3d9bff;color:#fff}
+
+  /* toast */
+  #toast{position:fixed;left:50%;top:calc(74px + var(--sat));transform:translateX(-50%);
+    z-index:60;background:#12203a;border:1px solid var(--line);color:var(--ink);
+    padding:11px 16px;border-radius:12px;font-size:13px;font-weight:500;
+    opacity:0;transition:opacity .25s, transform .25s;pointer-events:none;
+    max-width:calc(100vw - 32px);text-align:center;box-shadow:0 8px 28px #0009;
+    padding-left:14px;padding-right:14px}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(4px)}
+  #toast.ok{border-color:#2e6b45;background:#0f2a1ce8}
+  #toast.err{border-color:#7a2c2c;background:#2a0f0fe8}
+
+  /* onboarding */
+  #intro{position:fixed;inset:0;z-index:80;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:26px;padding-top:calc(26px + var(--sat));text-align:center;gap:12px;overflow:auto}
+  #intro .badge{font-size:44px;line-height:1}
+  #intro h1{font-size:20px;margin:0;letter-spacing:-.3px}
+  #intro p{color:var(--dim);margin:0;max-width:430px;font-size:13.5px;line-height:1.65}
+  #intro .card{background:#101b30;border:1px solid var(--line);border-radius:14px;
+    padding:14px;width:100%;max-width:430px;text-align:left}
+  #intro .card .row{font-size:12.5px}
+  #intro button{width:100%;max-width:430px;padding:15px;border-radius:14px;border:0;
+    font-size:16px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;
+    box-shadow:0 6px 20px #007aff44}
+  #intro button.ghost{background:#1b2a44;color:#cfe0ff;box-shadow:none}
+  #intro button:active{transform:scale(.98)}
+
+  /* ganti arah lanskap: panel naik */
+  @media (max-height:420px){
+    #panel{display:none}
+    #right{bottom:calc(96px + var(--sab))}
+  }
+</style>
+</head>
+<body>
+
+<div id="map"><div id="world"></div><div class="ovl" id="ov"></div></div>
+
+<div id="top">
+  <div id="brand">
+    <b>073 Kerilla Aug26 Task Map</b>
+    <span id="sub">—</span>
+  </div>
+  <div id="gpschip">GPS: —</div>
+</div>
+
+<div id="panel">
+  <div id="phead"><span>Status</span><span id="ptoggle">▲</span></div>
+  <div id="pbody">
+    <div class="row"><span class="k">Latitude</span><span class="v" id="s-lat">—</span></div>
+    <div class="row"><span class="k">Longitude</span><span class="v" id="s-lon">—</span></div>
+    <div class="row"><span class="k">Ketepatan</span><span class="v" id="s-acc">—</span></div>
+    <div class="row"><span class="k">Zoom / GSD</span><span class="v" id="s-zoom">—</span></div>
+    <div class="row"><span class="k">Jarak</span><span class="v" id="s-dist">—</span></div>
+  </div>
+</div>
+
+<div id="right">
+  <button id="btn-locate" title="Lokasi saya">◎</button>
+  <button id="btn-follow" title="Ikut saya">🧭</button>
+  <button id="btn-zin" title="Zoom masuk">＋</button>
+  <button id="btn-zout" title="Zoom keluar">−</button>
+  <div id="compass"><span class="needle" id="cneedle">▲</span></div>
+</div>
+
+<div id="dock">
+  <div id="tools">
+    <div class="tool" data-t="locate"><span class="ico">◎</span>Lokasi</div>
+    <div class="tool" data-t="pin"><span class="ico">📍</span>Placemark</div>
+    <div class="tool" data-t="measure"><span class="ico">📏</span>Ukur</div>
+    <div class="tool" data-t="geofence"><span class="ico">⬡</span>Geofence</div>
+    <div class="tool" data-t="track"><span class="ico">⏺</span>Rakam</div>
+    <div class="tool" data-t="undo"><span class="ico">↩</span>Buang</div>
+    <div class="tool" data-t="reset"><span class="ico">⤢</span>Reset</div>
+    <div class="tool" data-t="fit"><span class="ico">🗺️</span>Muat
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="intro">
+  <div class="badge">🗺️</div>
+  <h1>073 Kerilla Aug26 Task Map</h1>
+  <p>Peta GeoPDF sebenar (QGIS) — Kelantan, Malaysia</p>
+  <div class="card">
+    <div class="row"><span class="k">Kawasan</span><span class="v">8.99 × 6.53 km</span></div>
+    <div class="row"><span class="k">Resolusi</span><span class="v">2.64 m/piksel</span></div>
+    <div class="row"><span class="k">Zoom</span><span class="v">5 peringkat</span></div>
+    <div class="row"><span class="k">Ketepatan</span><span class="v">0.000 m</span></div>
+  </div>
+  <button id="btn-go">📡 Mula &amp; Cari Saya</button>
+  <button id="btn-go-map" class="ghost">Lihat Peta Dahulu</button>
+  <p style="font-size:11.5px;color:#6f86ab;margin-top:2px">
+    Seret · pinch untuk zoom · GPS perlukan kebenaran lokasi
+  </p>
+</div>
+
+<script>
+const TILE = 256;
+let META = null;
+const state = {
+  scale: 0.5, cx: 0, cy: 0, vw: 0, vh: 0,
+  tiles: new Map(), gps: null, acc: null, heading: null,
+  watchId: null, follow: true, tool: null,
+  pins: [], measure: [], geofences: [], trackPts: [], recording: false,
+};
+const $ = s => document.querySelector(s);
+const map = $('#map'), world = $('#world'), ov = $('#ov');
+
+/* ---------- transform: piksel peta <-> lon/lat ---------- */
+function px2ll(col, row) {
+  const t = META.transform;
+  return { lon: t.A*col + t.B*row + t.C, lat: t.D*col + t.E*row + t.F };
+}
+function ll2px(lon, lat) {
+  const t = META.transform;
+  const det = t.A*t.E - t.B*t.D, dx = lon - t.C, dy = lat - t.F;
+  return { col: (t.E*dx - t.B*dy)/det, row: (-t.D*dx + t.A*dy)/det };
+}
+
+/* ---------- util ---------- */
+function haversine(lon1, lat1, lon2, lat2) {
+  const R = 6371008.8, r = d => d*Math.PI/180;
+  const dLat = r(lat2-lat1), dLon = r(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function fmtD(m) { return m == null ? '—' : (m < 1000 ? m.toFixed(1)+' m' : (m/1000).toFixed(2)+' km'); }
+function toast(msg, ms = 2600, kind = '') {
+  const t = $('#toast');
+  t.textContent = msg; t.className = 'show ' + kind;
+  clearTimeout(t._t); t._t = setTimeout(() => t.className = '', ms);
+}
+
+/* ---------- saiz ---------- */
+function measureViewport() {
+  state.vw = map.clientWidth;
+  state.vh = map.clientHeight;
+}
+
+/* ---------- level zoom ---------- */
+function levelFor(scale) {
+  const target = (1/scale) * META.gsdMeters;
+  let best = META.levels[META.levels.length-1], bd = Infinity;
+  for (const l of META.levels) {
+    const d = Math.abs(l.metersPerPixel - target);
+    if (d < bd) { bd = d; best = l; }
+  }
+  return best;
+}
+
+/* ---------- PENTING: kekalkan jarak selamat supaya GPS tak keluar skrin ---------- */
+function clampPan() {
+  const W = META.width, H = META.height;
+  // Margin selamat: 15% skrin supaya titik tidak melekat di tepi
+  const mX = state.vw * 0.15 / state.scale;
+  const mY = state.vh * 0.15 / state.scale;
+  const hw = state.vw/2/state.scale, hh = state.vh/2/state.scale;
+  if (W > 2*hw) state.cx = Math.max(hw - mX, Math.min(W - hw + mX, state.cx));
+  else state.cx = W/2;
+  if (H > 2*hh) state.cy = Math.max(hh - mY, Math.min(H - hh + mY, state.cy));
+  else state.cy = H/2;
+}
+
+/* ---------- render ---------- */
+function render() {
+  if (!META) return;
+  measureViewport();
+  // jika ikut GPS, sentiasa pusatkan (tidak kira clamp)
+  if (state.follow && state.gps) {
+    const fp = ll2px(state.gps.lon, state.gps.lat);
+    state.cx = fp.col; state.cy = fp.row;
+  }
+  const lv = levelFor(state.scale), s = lv.scale, k = state.scale * s;
+
+  if (!state.follow) clampPan();
+
+  world.style.transform = 'translate(' + (-(state.cx/s)*k + state.vw/2) + 'px,' +
+    (-(state.cy/s)*k + state.vh/2) + 'px) scale(' + k + ')';
+
+  // tile
+  const need = new Map();
+  const lx = state.cx/s, ly = state.cy/s;
+  const hw = state.vw/2/k, hh = state.vh/2/k;
+  for (let tx = Math.floor((lx-hw)/TILE); tx <= Math.floor((lx+hw)/TILE); tx++)
+    for (let ty = Math.floor((ly-hh)/TILE); ty <= Math.floor((ly+hh)/TILE); ty++) {
+      if (tx < 0 || ty < 0 || tx >= lv.tilesX || ty >= lv.tilesY) continue;
+      need.set(lv.z+'_'+tx+'_'+ty, { z: lv.z, x: tx, y: ty });
+    }
+  for (const [key, el] of state.tiles) if (!need.has(key)) { el.remove(); state.tiles.delete(key); }
+  for (const [key, t] of need) {
+    if (state.tiles.has(key)) continue;
+    const im = document.createElement('img');
+    im.src = 'tiles/'+t.z+'/'+t.x+'_'+t.y+'.png';
+    im.style.left = (t.x*TILE)+'px'; im.style.top = (t.y*TILE)+'px';
+    im.width = TILE; im.height = TILE;
+    world.appendChild(im); state.tiles.set(key, im);
+  }
+
+  $('#s-zoom').textContent = 'z'+lv.z+' / '+lv.metersPerPixel.toFixed(2)+'m';
+
+  drawOverlay(s, k);
+}
+
+function drawOverlay(s, k) {
+  ov.innerHTML = '';
+  const toScr = (col, row) => ({
+    x: (col/s - state.cx/s)*k + state.vw/2,
+    y: (row/s - state.cy/s)*k + state.vh/2,
+  });
+
+  // geofence
+  for (const g of state.geofences) {
+    const c = ll2px(g.lon, g.lat), q = toScr(c.col, c.row);
+    const rpx = (g.radiusM / META.gsdMeters) / s * k;
+    const el = document.createElement('div');
+    el.className = 'gf';
+    el.style.left = (q.x-rpx)+'px'; el.style.top = (q.y-rpx)+'px';
+    el.style.width = (rpx*2)+'px'; el.style.height = (rpx*2)+'px';
+    ov.appendChild(el);
+  }
+  // track
+  if (state.trackPts.length > 1) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:8');
+    let d = '';
+    state.trackPts.forEach((p,i) => {
+      const fp = ll2px(p.lon,p.lat), q = toScr(fp.col,fp.row);
+      d += (i?' L ':'M ')+q.x+' '+q.y;
+    });
+    const pth = document.createElementNS('http://www.w3.org/2000/svg','path');
+    pth.setAttribute('d', d); pth.setAttribute('fill','none');
+    pth.setAttribute('stroke','#ff3b30'); pth.setAttribute('stroke-width','4');
+    pth.setAttribute('stroke-linejoin','round'); pth.setAttribute('stroke-linecap','round');
+    svg.appendChild(pth); ov.appendChild(svg);
+  }
+  // measure
+  if (state.measure.length) {
+    let total = 0;
+    for (let i = 0; i < state.measure.length; i++) {
+      const fp = ll2px(state.measure[i].lon, state.measure[i].lat), q = toScr(fp.col,fp.row);
+      const dot = document.createElement('div');
+      dot.className = 'pin'; dot.textContent = '•';
+      dot.style.color = '#ff9500'; dot.style.fontSize = '32px';
+      dot.style.left = q.x+'px'; dot.style.top = q.y+'px';
+      ov.appendChild(dot);
+      if (i > 0) {
+        const pv = state.measure[i-1];
+        total += haversine(pv.lon,pv.lat,state.measure[i].lon,state.measure[i].lat);
+        const f0 = ll2px(pv.lon,pv.lat), q0 = toScr(f0.col,f0.row);
+        const len = Math.hypot(q.x-q0.x, q.y-q0.y);
+        const ang = Math.atan2(q.y-q0.y, q.x-q0.x)*180/Math.PI;
+        const ln = document.createElement('div');
+        ln.className = 'ml';
+        ln.style.left = q0.x+'px'; ln.style.top = q0.y+'px';
+        ln.style.width = len+'px'; ln.style.transform = 'rotate('+ang+'deg)';
+        ov.appendChild(ln);
+      }
+    }
+    const last = state.measure[state.measure.length-1];
+    const fp = ll2px(last.lon,last.lat), q = toScr(fp.col,fp.row);
+    const lab = document.createElement('div');
+    lab.id = 'mlabel'; lab.textContent = fmtD(total);
+    lab.style.left = q.x+'px'; lab.style.top = q.y+'px';
+    ov.appendChild(lab);
+    $('#s-dist').textContent = fmtD(total);
+  }
+  // pins
+  for (const p of state.pins) {
+    const fp = ll2px(p.lon,p.lat), q = toScr(fp.col,fp.row);
+    const el = document.createElement('div');
+    el.className = 'pin'; el.textContent = '📍';
+    el.style.left = q.x+'px'; el.style.top = q.y+'px';
+    ov.appendChild(el);
+  }
+  // GPS dot - SENTIASA dilukis
+  if (state.gps) {
+    const fp = ll2px(state.gps.lon, state.gps.lat), q = toScr(fp.col, fp.row);
+    const el = document.createElement('div');
+    el.className = 'gps';
+    el.style.left = q.x+'px'; el.style.top = q.y+'px';
+    el.innerHTML = '<div class="halo"></div><div class="dot"></div>';
+    ov.appendChild(el);
+  }
+}
+
+/* ---------- interaksi ---------- */
+let drag = null;
+map.addEventListener('pointerdown', e => {
+  if (e.target.closest('button') || e.target.closest('.tool') || e.target.closest('#panel')) return;
+  if (state.tool) return;
+  state.follow = false; updateFollowBtn();
+  drag = { x: e.clientX, y: e.clientY, cx: state.cx, cy: state.cy };
+  map.classList.add('dragging');
+  try { map.setPointerCapture(e.pointerId); } catch {}
+});
+map.addEventListener('pointermove', e => {
+  if (!drag) return;
+  state.cx = drag.cx - (e.clientX-drag.x)/state.scale;
+  state.cy = drag.cy - (e.clientY-drag.y)/state.scale;
+  render();
+});
+const endDrag = () => { drag = null; map.classList.remove('dragging'); };
+map.addEventListener('pointerup', endDrag);
+map.addEventListener('pointercancel', endDrag);
+
+let pinch = null;
+map.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    const [a,b] = e.touches;
+    pinch = { d: Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY), s: state.scale };
+    state.follow = false; updateFollowBtn();
+  }
+}, { passive: true });
+map.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && pinch) {
+    const [a,b] = e.touches;
+    const d = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+    setScale(pinch.s * (d/pinch.d));
+    e.preventDefault();
+  }
+}, { passive: false });
+map.addEventListener('touchend', () => { pinch = null; });
+
+function setScale(v) {
+  state.scale = Math.max(0.12, Math.min(8, v));
+  render();
+}
+map.addEventListener('wheel', e => {
+  e.preventDefault();
+  setScale(state.scale * (e.deltaY < 0 ? 1.15 : 1/1.15));
+}, { passive: false });
+
+map.addEventListener('click', e => {
+  if (!state.tool) return;
+  const r = map.getBoundingClientRect();
+  const px = state.cx + (e.clientX - r.left - state.vw/2)/state.scale;
+  const py = state.cy + (e.clientY - r.top - state.vh/2)/state.scale;
+  const ll = px2ll(px, py);
+  if (state.tool === 'pin') { state.pins.push(ll); toast('📍 Placemark diletak', 1800, 'ok'); }
+  else if (state.tool === 'measure') {
+    state.measure.push(ll);
+    toast(state.measure.length === 1 ? 'Titik mula set — ketik titik seterusnya' : 'Titik ditambah', 1800, 'ok');
+  } else if (state.tool === 'geofence') {
+    state.geofences.push({ ...ll, radiusM: 150 });
+    toast('⬡ Geofence 150 m dicipta', 1800, 'ok');
+  }
+  render();
+});
+
+function updateFollowBtn() {
+  const btn = document.querySelector('#btn-follow');
+  if (btn) btn.classList.toggle('on', state.follow);
+  const el = document.querySelector('#gpschip');
+  if (!el) return;
+  if (state.gps) {
+    el.className = 'on';
+    el.textContent = 'GPS ±' + (state.acc ? Math.round(state.acc) + 'm' : 'ok');
+  } else {
+    el.className = '';
+    el.textContent = 'GPS: —';
+  }
+}
+
+/* ---------- alat ---------- */
+document.querySelectorAll('.tool').forEach(el => {
+  el.addEventListener('click', () => {
+    const t = el.dataset.t;
+    if (t === 'locate') return locate();
+    if (t === 'fit') {
+      state.follow = false; updateFollowBtn();
+      state.scale = Math.min(state.vw/META.width, state.vh/META.height) * 0.92;
+      state.cx = META.width/2; state.cy = META.height/2;
+      render();
+      toast('Seluruh peta dipaparkan');
+      return;
+    }
+    if (t === 'undo') {
+      if (state.tool === 'measure') state.measure.pop(); else state.pins.pop();
+      render(); return;
+    }
+    if (t === 'reset') {
+      state.pins = []; state.measure = []; state.geofences = []; state.trackPts = []; state.recording = false; updateTrackBtn();
+      state.tool = null; updateTools();
+      state.scale = 0.5; state.cx = META.width/2; state.cy = META.height/2;
+      $('#s-dist').textContent = '—';
+      render(); toast('Direset'); return;
+    }
+    if (t === 'track') {
+      if (state.recording) stopRecording(); else startRecording();
+      return;
+    }
+    state.tool = state.tool === t ? null : t;
+    updateTools();
+    if (state.tool) toast('Ketik pada peta untuk letak ' + state.tool, 2400);
+  });
+});
+function startRecording() {
+  if (!state.gps) { toast('Tekan ◎ Cari Lokasi dahulu', 3400, 'err'); return; }
+  state.recording = true;
+  state.trackPts = [{ lon: state.gps.lon, lat: state.gps.lat, t: Date.now(), acc: state.acc }];
+  state.follow = true; updateFollowBtn(); updateTrackBtn();
+  document.querySelector('#s-dist').textContent = '0.0 m';
+  toast('⏺ Merakam laluan anda — mula berjalan', 3400, 'ok');
+}
+function stopRecording() {
+  state.recording = false;
+  updateTrackBtn();
+  const n = state.trackPts.length, d = trackDistance();
+  if (n < 2) { toast('⏹ Berhenti — terlalu sedikit titik', 3600, 'err'); return; }
+  toast('⏹ Berhenti: ' + n + ' titik · ' + fmtD(d) + speedSuffix(), 6000, 'ok');
+}
+function trackDistance() {
+  let d = 0;
+  for (let i = 1; i < state.trackPts.length; i++)
+    d += haversine(state.trackPts[i-1].lon, state.trackPts[i-1].lat,
+                   state.trackPts[i].lon, state.trackPts[i].lat);
+  return d;
+}
+function speedSuffix() {
+  if (state.trackPts.length < 2) return "";
+  const sec = (state.trackPts[state.trackPts.length-1].t - state.trackPts[0].t) / 1000;
+  if (sec < 3) return "";
+  return " · " + ((trackDistance()/sec)*3.6).toFixed(1) + " km/j";
+}
+function updateTrackBtn() {
+  const el = document.querySelector('[data-t="track"]');
+  if (!el) return;
+  el.classList.toggle("on", !!state.recording);
+  el.innerHTML = state.recording ? "<span class=\"ico\">⏹</span>Henti" : "<span class=\"ico\">⏺</span>Rakam";
+}
+function updateTools() {
+  document.querySelectorAll('.tool').forEach(t => t.classList.toggle('on', t.dataset.t === state.tool));
+}
+
+/* ---------- GPS ---------- */
+function locate() {
+  if (!navigator.geolocation) { toast('Peranti tidak sokong GPS', 3000, 'err'); return; }
+  // Nota: jangan sekat kerana isSecureContext - pelayar sendiri akan beri ralat yang lebih baik
+  if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    toast('GPS perlukan HTTPS. Buka guna https://', 4000, 'err'); return;
+  }
+  toast('📡 Mencari lokasi anda...', 5000);
+  $('#gpschip').textContent = 'GPS: mencari...';
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    applyFix(pos, true);
+    toast('📍 Dijumpai — ketepatan ±' + Math.round(pos.coords.accuracy) + ' m', 3200, 'ok');
+  }, err => {
+    const msg = { 1:'Kebenaran lokasi ditolak. Buka tetapan laman → Location → Allow.',
+                  2:'GPS tidak tersedia. Pastikan Location telefon hidup.',
+                  3:'Timeout. Cuba lagi di tempat terbuka.' }[err.code] || err.message;
+    $('#gpschip').textContent = 'GPS: gagal (' + err.code + ')';
+    toast('⚠ ' + msg, 7000, 'err');
+  }, { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 });
+
+  if (state.watchId == null) {
+    state.watchId = navigator.geolocation.watchPosition(pos => applyFix(pos, false), e => {
+      if (e.code === 1) $('#gpschip').textContent = 'GPS: disekat';
+    }, { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 });
+  }
+}
+
+function applyFix(pos, center) {
+  const c = pos.coords;
+  state.gps = { lon: c.longitude, lat: c.latitude };
+  state.acc = c.accuracy;
+  state.heading = c.heading;
+  if (c.heading != null && !isNaN(c.heading)) {
+    $('#cneedle').style.transform = 'rotate(' + c.heading + 'deg)';
+    $('#cneedle').style.display = 'inline-block';
+  }
+  $('#s-lat').textContent = c.latitude.toFixed(6);
+  $('#s-lon').textContent = c.longitude.toFixed(6);
+  $('#s-acc').textContent = '±' + Math.round(c.accuracy) + ' m';
+  updateFollowBtn();
+
+  // Rakam titik GPS SEBENAR semasa merakam
+  if (state.recording) {
+    const last = state.trackPts[state.trackPts.length-1];
+    const moved = !last || haversine(last.lon, last.lat, c.longitude, c.latitude) >= 2;
+    if (moved) {
+      state.trackPts.push({ lon: c.longitude, lat: c.latitude, t: Date.now(), acc: c.accuracy });
+      const dd = trackDistance();
+      document.querySelector('#s-dist').textContent = fmtD(dd);
+      document.querySelector('#sub').textContent = '⏺ ' + state.trackPts.length + ' titik · ' + fmtD(dd);
+    }
+  }
+  if (center) {
+    state.follow = true; updateFollowBtn();
+    state.scale = Math.max(state.scale, 0.42);
+    const fp = ll2px(c.longitude, c.latitude);
+    const inMap = fp.col >= 0 && fp.row >= 0 && fp.col < META.width && fp.row < META.height;
+    $('#sub').textContent = inMap ? 'Anda di dalam kawasan peta' : 'Anda di luar peta ini';
+  }
+  render();
+}
+
+/* ---------- butang ---------- */
+$('#btn-locate').onclick = locate;
+$('#btn-follow').onclick = () => {
+  state.follow = !state.follow;
+  updateFollowBtn();
+  if (state.follow && state.gps) toast('🧭 Mengikut lokasi anda', 2000, 'ok');
+  else if (state.follow) toast('Tekan ◎ Lokasi dahulu', 2400);
+  render();
+};
+$('#btn-zin').onclick = () => setScale(state.scale * 1.5);
+$('#btn-zout').onclick = () => setScale(state.scale / 1.5);
+$('#phead').onclick = () => {
+  const p = $('#panel');
+  p.classList.toggle('min');
+  $('#ptoggle').textContent = p.classList.contains('min') ? '▼' : '▲';
+};
+
+/* ---------- mula ---------- */
+async function boot(withGps) {
+  META = await (await fetch('map-meta.json')).json();
+  const b = META.bbox;
+  $('#sub').textContent = META.gsdMeters.toFixed(2) + ' m/px · Kelantan · ' +
+    META.width + '×' + META.height + ' px';
+  state.cx = META.width/2; state.cy = META.height/2;
+  state.scale = Math.min(map.clientWidth/META.width, map.clientHeight/META.height) * 0.92;
+  $('#intro').remove();
+  measureViewport();
+  render();
+  window.addEventListener('resize', () => { measureViewport(); render(); });
+  window.addEventListener('orientationchange', () => setTimeout(() => { measureViewport(); render(); }, 300));
+  updateFollowBtn();
+  if (withGps) locate();
+  else toast('Seret untuk pan · pinch untuk zoom · ◎ untuk GPS', 4200);
+}
+$('#btn-go').onclick = () => boot(true);
+$('#btn-go-map').onclick = () => boot(false);
+</script>
+</body>
+</html>

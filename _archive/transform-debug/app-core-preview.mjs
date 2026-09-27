@@ -1,8 +1,8 @@
 const TILE = 256;
 let META = null;
 /* ===== FLAG TOGOL TRANSFORM (untuk test fizikal lapangan) ===== */
-const USE_LEGACY_TRANSFORM = true;  // true=lama(live), false=baru(300dpi GPTS betul)
-const DEBUG_DUAL_GPS = false;       // true=papar 2 dot GPS serentak (merah=lama, hijau=baru)
+const USE_LEGACY_TRANSFORM = false;  // true=lama(live), false=baru(300dpi GPTS betul)
+const DEBUG_DUAL_GPS = true;       // true=papar 2 dot GPS serentak (merah=lama, hijau=baru)
 const S = {
   scale:.5, cx:0, cy:0, vw:0, vh:0, tiles:new Map(),
   gps:null, acc:null, watch:null, follow:true,

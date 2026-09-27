@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ujian Kedudukan GPS — Kerilla</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;padding:12px;padding-top:max(12px,env(safe-area-inset-top));background:#0b1220;color:#e8eefc;
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  h1{font-size:17px;margin:0 0 2px}
+  .sub{color:#8fa3c8;font-size:12px;margin-bottom:12px}
+  .card{background:#101b30;border:1px solid #24354f;border-radius:12px;padding:12px;margin-bottom:10px}
+  .card h2{font-size:12px;margin:0 0 8px;color:#8fa3c8;text-transform:uppercase;letter-spacing:.5px}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px;border-bottom:1px solid #1b2b45}
+  .row:last-child{border-bottom:0}
+  .row .k{color:#8fa3c8}.row .v{font-variant-numeric:tabular-nums;text-align:right}
+  .ok{color:#6fe08a}.bad{color:#ff6b6b}.warn{color:#ffc857}
+  button{width:100%;padding:13px;border-radius:11px;border:0;font-size:15px;font-weight:600;cursor:pointer;
+    background:#007aff;color:#fff;margin-top:6px}
+  button.ghost{background:#1b2a44;color:#cfe0ff}
+  #stage{position:relative;width:100%;height:300px;background:#1a2333;border-radius:10px;
+    overflow:hidden;border:1px solid #24354f}
+  #world{position:absolute;transform-origin:0 0;will-change:transform}
+  #world img{position:absolute;pointer-events:none;-webkit-user-drag:none}
+  .ovl{position:absolute;inset:0;pointer-events:none}
+  .gps{position:absolute;z-index:12;pointer-events:none}
+  .gps .halo{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+    background:#007aff26;border:1px solid #007aff55;animation:pulse 2.2s ease-out infinite}
+  .gps .dot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
+    background:#007aff;border:3px solid #fff;box-shadow:0 1px 6px #0009}
+  @keyframes pulse{0%{transform:scale(.6);opacity:.9}70%{transform:scale(1.35);opacity:0}100%{opacity:0}}
+  #log{background:#0a1120;border:1px solid #1b2b45;border-radius:9px;padding:9px;
+    font:11.5px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap;max-height:200px;overflow:auto;color:#9db0d0}
+</style>
+</head>
+<body>
+<h1>🎯 Ujian Kedudukan GPS</h1>
+<div class="sub">Tunjuk titik biru anda pada peta Kerilla SEBENAR</div>
+
+<div class="card">
+  <h2>Titik Anda</h2>
+  <div class="row"><span class="k">Latitude</span><span class="v" id="lat">—</span></div>
+  <div class="row"><span class="k">Longitude</span><span class="v" id="lon">—</span></div>
+  <div class="row"><span class="k">Ketepatan</span><span class="v" id="acc">—</span></div>
+  <div class="row"><span class="k">Piksel peta</span><span class="v" id="px">—</span></div>
+  <div class="row"><span class="k">Status</span><span class="v" id="st">—</span></div>
+</div>
+
+<div class="card">
+  <h2>Peta (titik biru = anda)</h2>
+  <div id="stage"><div id="world"></div><div class="ovl" id="ov"></div></div>
+</div>
+
+<button id="go">📡 Cari Lokasi Saya</button>
+<button id="zin" class="ghost">🔍 Zoom Masuk</button>
+<button id="zout" class="ghost">🔎 Zoom Keluar</button>
+
+<div class="card" style="margin-top:10px">
+  <h2>Log</h2>
+  <div id="log">Tekan butang di atas...</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const log = m => {
+  const el=$('#log');
+  if(el.textContent==='Tekan butang di atas...') el.textContent='';
+  el.textContent += '[' + new Date().toTimeString().slice(0,8) + '] ' + m + '\n';
+  el.scrollTop = el.scrollHeight;
+};
+
+let META=null, gps=null, scale=0.14, cx=0, cy=0, tiles=new Map();
+const TILE=256;
+const stage=$('#stage'), world=$('#world'), ov=$('#ov');
+
+function fullToLonLat(col,row){
+  const t=META.transform;
+  return { lon:t.A*col+t.B*row+t.C, lat:t.D*col+t.E*row+t.F };
+}
+function lonLatToFull(lon,lat){
+  const t=META.transform;
+  const det=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
+  return { col:(t.E*dx-t.B*dy)/det, row:(-t.D*dx+t.A*dy)/det };
+}
+function level(){
+  const lvls=META.levels, target=(1/scale)*META.gsdMeters;
+  let best=lvls[lvls.length-1], bd=Infinity;
+  for(const l of lvls){const d=Math.abs(l.metersPerPixel-target); if(d<bd){bd=d;best=l;}}
+  return best;
+}
+function render(){
+  if(!META) return;
+  const vw=stage.clientWidth, vh=stage.clientHeight;
+  const lv=level(), s=lv.scale, k=scale*s;
+  // had
+  const hw=vw/2/scale, hh=vh/2/scale;
+  cx=Math.max(hw,Math.min(META.width-hw,cx));
+  cy=Math.max(hh,Math.min(META.height-hh,cy));
+  world.style.transform='translate('+(-(cx/s)*k+vw/2)+'px,'+(-(cy/s)*k+vh/2)+'px) scale('+k+')';
+
+  const need=new Map();
+  const lx=cx/s, ly=cy/s, hw2=vw/2/k, hh2=vh/2/k;
+  for(let tx=Math.floor((lx-hw2)/TILE); tx<=Math.floor((lx+hw2)/TILE); tx++)
+    for(let ty=Math.floor((ly-hh2)/TILE); ty<=Math.floor((ly+hh2)/TILE); ty++){
+      if(tx<0||ty<0||tx>=lv.tilesX||ty>=lv.tilesY) continue;
+      need.set(lv.z+'_'+tx+'_'+ty,{z:lv.z,x:tx,y:ty});
+    }
+  for(const [key,el] of tiles) if(!need.has(key)){el.remove();tiles.delete(key);}
+  for(const [key,t] of need){
+    if(tiles.has(key)) continue;
+    const im=document.createElement('img');
+    im.src='tiles/'+t.z+'/'+t.x+'_'+t.y+'.png';
+    im.style.left=(t.x*TILE)+'px'; im.style.top=(t.y*TILE)+'px';
+    im.width=TILE; im.height=TILE; world.appendChild(im); tiles.set(key,im);
+  }
+  // overlay
+  ov.innerHTML='';
+  if(gps){
+    const fp=lonLatToFull(gps.lon,gps.lat);
+    const q={ x:(fp.col/s-cx/s)*k+vw/2, y:(fp.row/s-cy/s)*k+vh/2 };
+    const d=document.createElement('div'); d.className='gps';
+    d.style.left=q.x+'px'; d.style.top=q.y+'px';
+    d.innerHTML='<div class="halo"></div><div class="dot"></div>';
+    ov.appendChild(d);
+    log('  titik dirender pada skrin (' + q.x.toFixed(0) + ',' + q.y.toFixed(0) + ') viewport ' + vw + 'x' + vh);
+  }
+}
+
+async function boot(){
+  META = await (await fetch('map-meta.json')).json();
+  log('Peta dimuat: ' + META.width + 'x' + META.height + ' px, ' + META.levels.length + ' zoom');
+  log('Transform: A=' + META.transform.A.toExponential(6) + ' E=' + META.transform.E.toExponential(6));
+  cx=META.width/2; cy=META.height/2;
+  render();
+  window.addEventListener('resize', render);
+}
+boot();
+
+$('#go').onclick = () => {
+  log('--- Cari lokasi ---');
+  navigator.geolocation.getCurrentPosition((pos)=>{
+    const c=pos.coords;
+    gps={lon:c.longitude, lat:c.latitude};
+    $('#lat').textContent=c.latitude.toFixed(6);
+    $('#lon').textContent=c.longitude.toFixed(6);
+    $('#acc').textContent='±'+Math.round(c.accuracy)+' m';
+    log('GPS: ' + c.latitude.toFixed(6) + ', ' + c.longitude.toFixed(6) + ' ±' + Math.round(c.accuracy) + 'm');
+
+    // Kira piksel
+    const fp=lonLatToFull(gps.lon,gps.lat);
+    $('#px').textContent='(' + fp.col.toFixed(1) + ', ' + fp.row.toFixed(1) + ')';
+    const inside = fp.col>=0 && fp.row>=0 && fp.col<META.width && fp.row<META.height;
+    $('#st').innerHTML = inside
+      ? '<span class="ok">DALAM PETA ✅</span>'
+      : '<span class="bad">LUAR PETA ❌</span>';
+    log('Piksel peta: (' + fp.col.toFixed(1) + ', ' + fp.row.toFixed(1) + ')');
+    log('Dalam peta: ' + (inside?'YA':'TIDAK'));
+    log('Saiz peta : ' + META.width + ' x ' + META.height);
+
+    // Pusatkan pada GPS + zoom masuk
+    cx=fp.col; cy=fp.row;
+    scale=0.25;
+    render();
+    log('Dipusatkan pada GPS, scale=0.25');
+  }, (err)=>{
+    log('❌ Gagal: code=' + err.code + ' ' + err.message);
+    $('#st').innerHTML='<span class="bad">GAGAL (' + err.code + ')</span>';
+  }, {enableHighAccuracy:true, timeout:60000, maximumAge:0});
+};
+$('#zin').onclick = () => { scale=Math.min(4,scale*1.6); render(); log('scale=' + scale.toFixed(3)); };
+$('#zout').onclick = () => { scale=Math.max(0.04,scale/1.6); render(); log('scale=' + scale.toFixed(3)); };
+</script>
+</body>
+</html>
