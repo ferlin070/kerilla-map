@@ -45,6 +45,17 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--sand);color:var(
 .gps .d{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
   background:var(--sky);border:3.5px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.35)}
 @keyframes pulse{0%{transform:scale(.55);opacity:.9}70%{transform:scale(1.4);opacity:0}100%{opacity:0}}
+/* ===== DEBUG DUAL GPS (merah=lama, hijau=baru) ===== */
+.gps-debug-new{position:absolute;z-index:13;pointer-events:none}
+.gps-debug-new .h{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  background:rgba(34,197,94,.20);border:2px solid rgba(34,197,94,.75);animation:pulse 2.4s ease-out infinite}
+.gps-debug-new .d{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
+  background:#22c55e;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)}
+.gps-debug-legacy{position:absolute;z-index:13;pointer-events:none}
+.gps-debug-legacy .h{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  background:rgba(239,68,68,.20);border:2px solid rgba(239,68,68,.75);animation:pulse 2.4s ease-out infinite}
+.gps-debug-legacy .d{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
+  background:#ef4444;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)}
 
 .pin-i{position:absolute;z-index:11;pointer-events:none;transform:translate(-50%,-100%);
   width:30px;height:38px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
@@ -365,9 +376,12 @@ background:var(--paper);color:var(--forest-d);display:flex;align-items:center;ju
 
 <script>
 /* APP_V: versi dirender oleh build. Tukar setiap deploy. */
-const APP_V="f105a9a6";
+const APP_V="1123a3c8";
 const TILE = 256;
 let META = null;
+/* ===== FLAG TOGOL TRANSFORM (untuk test fizikal lapangan) ===== */
+const USE_LEGACY_TRANSFORM = true;  // true=lama(live), false=baru(300dpi GPTS betul)
+const DEBUG_DUAL_GPS = false;       // true=papar 2 dot GPS serentak (merah=lama, hijau=baru)
 const S = {
   scale:.5, cx:0, cy:0, vw:0, vh:0, tiles:new Map(),
   gps:null, acc:null, watch:null, follow:true,
@@ -423,6 +437,12 @@ const px2ll = (c,r) => { const t=META.transform;
   return { lon:t.A*c+t.B*r+t.C, lat:t.D*c+t.E*r+t.F }; };
 const ll2px = (lon,lat) => { const t=META.transform;
   const d=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
+  return { col:(t.E*dx-t.B*dy)/d, row:(-t.D*dx+t.A*dy)/d }; };
+function applyTransform(){
+  if(!META) return;
+  META.transform = USE_LEGACY_TRANSFORM ? (META.transformLegacy || META.transform) : (META.transformNew || META.transform);
+}
+const ll2pxT = (lon,lat,t) => { const d=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
   return { col:(t.E*dx-t.B*dy)/d, row:(-t.D*dx+t.A*dy)/d }; };
 /* ===== LAPISAN LABEL NOMBER TASK ===== */
 let LBL=null;
@@ -584,6 +604,16 @@ function draw(sc,k){
     const e=document.createElement("div"); e.className="gps";
     e.style.left=q.x+"px"; e.style.top=q.y+"px";
     e.innerHTML='<div class="h"></div><div class="d"></div>'; ov.appendChild(e); }
+  /* ===== DEBUG DUAL GPS: papar dot kedua guna transform lain ===== */
+  if(DEBUG_DUAL_GPS && S.gps && META.transformNew && META.transformLegacy){
+    const otherT = USE_LEGACY_TRANSFORM ? META.transformNew : META.transformLegacy;
+    const f2 = ll2pxT(S.gps.lon, S.gps.lat, otherT), q2 = P(f2.col, f2.row);
+    const e2 = document.createElement("div");
+    e2.className = USE_LEGACY_TRANSFORM ? "gps-debug-new" : "gps-debug-legacy";
+    e2.style.left = q2.x + "px"; e2.style.top = q2.y + "px";
+    e2.innerHTML = '<div class="h"></div><div class="d"></div>';
+    ov.appendChild(e2);
+  }
   // ===== LABEL NOMBER (sentiasa nampak + de-clutter) =====
   if(LBL && LBL.length){
     const minh=14;            // saiz min skrin untuk label (boleh baca)
@@ -995,6 +1025,7 @@ async function boot(withGps){
   restoreAll();
   await checkVersion();
   META=await(await fetch("map-meta.json?v="+APP_V,{cache:"no-cache"})).json();
+  applyTransform();
   $("#hsub").textContent=META.gsdMeters.toFixed(2)+" m/px · Kelantan";
   S.vw=map.clientWidth; S.vh=map.clientHeight;
   fitCover();

@@ -45,6 +45,17 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--sand);color:var(
 .gps .d{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
   background:var(--sky);border:3.5px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.35)}
 @keyframes pulse{0%{transform:scale(.55);opacity:.9}70%{transform:scale(1.4);opacity:0}100%{opacity:0}}
+/* ===== DEBUG DUAL GPS (merah=lama, hijau=baru) ===== */
+.gps-debug-new{position:absolute;z-index:13;pointer-events:none}
+.gps-debug-new .h{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  background:rgba(34,197,94,.20);border:2px solid rgba(34,197,94,.75);animation:pulse 2.4s ease-out infinite}
+.gps-debug-new .d{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
+  background:#22c55e;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)}
+.gps-debug-legacy{position:absolute;z-index:13;pointer-events:none}
+.gps-debug-legacy .h{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  background:rgba(239,68,68,.20);border:2px solid rgba(239,68,68,.75);animation:pulse 2.4s ease-out infinite}
+.gps-debug-legacy .d{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
+  background:#ef4444;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)}
 
 .pin-i{position:absolute;z-index:11;pointer-events:none;transform:translate(-50%,-100%);
   width:30px;height:38px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}

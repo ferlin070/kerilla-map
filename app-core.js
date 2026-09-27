@@ -1,5 +1,8 @@
 const TILE = 256;
 let META = null;
+/* ===== FLAG TOGOL TRANSFORM (untuk test fizikal lapangan) ===== */
+const USE_LEGACY_TRANSFORM = true;  // true=lama(live), false=baru(300dpi GPTS betul)
+const DEBUG_DUAL_GPS = false;       // true=papar 2 dot GPS serentak (merah=lama, hijau=baru)
 const S = {
   scale:.5, cx:0, cy:0, vw:0, vh:0, tiles:new Map(),
   gps:null, acc:null, watch:null, follow:true,
@@ -55,6 +58,12 @@ const px2ll = (c,r) => { const t=META.transform;
   return { lon:t.A*c+t.B*r+t.C, lat:t.D*c+t.E*r+t.F }; };
 const ll2px = (lon,lat) => { const t=META.transform;
   const d=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
+  return { col:(t.E*dx-t.B*dy)/d, row:(-t.D*dx+t.A*dy)/d }; };
+function applyTransform(){
+  if(!META) return;
+  META.transform = USE_LEGACY_TRANSFORM ? (META.transformLegacy || META.transform) : (META.transformNew || META.transform);
+}
+const ll2pxT = (lon,lat,t) => { const d=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
   return { col:(t.E*dx-t.B*dy)/d, row:(-t.D*dx+t.A*dy)/d }; };
 /* ===== LAPISAN LABEL NOMBER TASK ===== */
 let LBL=null;
@@ -216,6 +225,16 @@ function draw(sc,k){
     const e=document.createElement("div"); e.className="gps";
     e.style.left=q.x+"px"; e.style.top=q.y+"px";
     e.innerHTML='<div class="h"></div><div class="d"></div>'; ov.appendChild(e); }
+  /* ===== DEBUG DUAL GPS: papar dot kedua guna transform lain ===== */
+  if(DEBUG_DUAL_GPS && S.gps && META.transformNew && META.transformLegacy){
+    const otherT = USE_LEGACY_TRANSFORM ? META.transformNew : META.transformLegacy;
+    const f2 = ll2pxT(S.gps.lon, S.gps.lat, otherT), q2 = P(f2.col, f2.row);
+    const e2 = document.createElement("div");
+    e2.className = USE_LEGACY_TRANSFORM ? "gps-debug-new" : "gps-debug-legacy";
+    e2.style.left = q2.x + "px"; e2.style.top = q2.y + "px";
+    e2.innerHTML = '<div class="h"></div><div class="d"></div>';
+    ov.appendChild(e2);
+  }
   // ===== LABEL NOMBER (sentiasa nampak + de-clutter) =====
   if(LBL && LBL.length){
     const minh=14;            // saiz min skrin untuk label (boleh baca)
@@ -627,6 +646,7 @@ async function boot(withGps){
   restoreAll();
   await checkVersion();
   META=await(await fetch("map-meta.json?v="+APP_V,{cache:"no-cache"})).json();
+  applyTransform();
   $("#hsub").textContent=META.gsdMeters.toFixed(2)+" m/px · Kelantan";
   S.vw=map.clientWidth; S.vh=map.clientHeight;
   fitCover();
