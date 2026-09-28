@@ -36,3 +36,5 @@ web-300dpi/tiles/
 kerilla-map-300dpi-1.png
 shot-*.png
 build-600b.mjs
+web-600dpi/shots/
+web-600dpi/shots.html
