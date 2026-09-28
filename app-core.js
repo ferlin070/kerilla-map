@@ -3,7 +3,6 @@ let META = null;
 /* ===== FLAG TOGOL TRANSFORM (untuk test fizikal lapangan) ===== */
 const USE_LEGACY_TRANSFORM = true;  // true=lama(live), false=baru(300dpi GPTS betul)
 const DEBUG_DUAL_GPS = false;       // true=papar 2 dot GPS serentak (merah=lama, hijau=baru)
-const SHOW_LABELS = false;         // false=matikan overlay label lama (untuk semakan peta tulen)
 const S = {
   scale:.5, cx:0, cy:0, vw:0, vh:0, tiles:new Map(),
   gps:null, acc:null, watch:null, follow:true,
@@ -74,22 +73,21 @@ function backupIfTransformSwitched(){
     toast('Storan legacy di-backup (kerilla.backup.legacy)', 2500);
   }
 }
+/* Notis sekali sahaja: perubahan georeferencing */
+function geoChangeNotice(){
+  const K='kerilla.geochange.notice.v2';
+  if(localStorage.getItem(K)) return;
+  localStorage.setItem(K, '1');
+  const legacy=localStorage.getItem('kerilla.pins')||localStorage.getItem('kerilla.measure')||localStorage.getItem('kerilla.geo');
+  if(legacy){
+    toast('Georeferencing peta telah diperbetulkan. Data lama (Placemark/Measure/Geofence) tidak dipaparkan di lokasi lama. Guna menu Lagi > Backup storan untuk eksport data lama.', 7000);
+  } else {
+    toast('Peta kini guna georeferencing yang diperbetulkan (600 DPI).', 4000);
+  }
+}
 const ll2pxT = (lon,lat,t) => { const d=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
   return { col:(t.E*dx-t.B*dy)/d, row:(-t.D*dx+t.A*dy)/d }; };
-/* ===== LAPISAN LABEL NOMBER TASK ===== */
-let LBL=null;
-async function loadLabels(){
-  try{
-    const r=await fetch("labels.json",{cache:"no-store"});
-    LBL=await r.json();
-    const im=document.createElement("img");
-    im.src="labels.png?v="+APP_V; im.id="lblatlas";
-    im.style.display="none";
-    document.body.appendChild(im);
-    if(META) render();
-  }catch(e){ console.warn("label gagal",e); }
-}
-loadLabels();
+
 /* ===== JARAK GEODESIK =====
    hav(lon1,lat1,lon2,lat2) — susunan parameter WAJIB (lon, lat, lon, lat).
    Guna formula VINCENTY (ellipsoid WGS84) — ketepatan < 1 mm,
@@ -162,6 +160,12 @@ function gotoCoordPrompt(){
   goToCoord(parts[0], parts[1], 6);
 }
 function goToCoord(lat, lon, sc){
+  const LATMIN=5.6712386219-0.005, LATMAX=5.7305629358+0.005;
+  const LONMIN=102.0576569392-0.005, LONMAX=102.1411774321+0.005;
+  if(lat<LATMIN||lat>LATMAX||lon<LONMIN||lon>LONMAX){
+    toast('Koordinat di luar liputan peta (GPTS)', 3500, 'err');
+    return;
+  }
   if(!META) return;
   S.follow=false;
   const f=ll2px(lon, lat);
@@ -274,41 +278,7 @@ function draw(sc,k){
     ov.appendChild(e2);
   }
   // ===== LABEL NOMBER (sentiasa nampak + de-clutter) =====
-  if(SHOW_LABELS && LBL && LBL.length){
-    const minh=14;            // saiz min skrin untuk label (boleh baca)
-    const maxh=300;           // saiz max (zoom dalam: label crop lebih tajam dari tile blur)
-    const placed=[];          // kotak label yang sudah diletak (untuk elak tindih)
-    for(const lb of LBL){
-      const q=P(lb.x, lb.y);
-      if(q.x<-60||q.y<-60||q.x>S.vw+60||q.y>S.vh+60) continue;
-      const fsc=k/sc;         // skala dunia -> skrin
-      let w=lb.sw*fsc, h=lb.sh*fsc;
-      let scale=1;
-      if(h<minh){ scale=minh/h; w*=scale; h=minh; }
-      if(h>maxh) continue;    // zoom sangat dalam - peta asal sudah tunjuk
-      const L=q.x-w/2, T=q.y-h/2;
-      // de-clutter: skip hanya jika bertindih TERUK (>35% luas label)
-      let overlap=false;
-      for(const p of placed){
-        const ox=Math.min(L+w,p.x+p.w)-Math.max(L,p.x);
-        const oy=Math.min(T+h,p.y+p.h)-Math.max(T,p.y);
-        if(ox>0&&oy>0){
-          const a=ox*oy;
-          if(a>0.35*w*h||a>0.35*p.w*p.h){overlap=true;break;}
-        }
-      }
-      if(overlap) continue;
-      placed.push({x:L, y:T, w:w, h:h});
-      const e=document.createElement("div"); e.className="lblnum";
-      e.style.left=L+"px"; e.style.top=T+"px";
-      e.style.width=w+"px"; e.style.height=h+"px";
-      e.style.backgroundImage="url(labels.png?v="+APP_V+")";
-      e.style.backgroundPosition=(-lb.sx*scale)+"px "+(-lb.sy*scale)+"px";
-      e.style.backgroundSize=(1024*scale)+"px "+(1024*scale)+"px";
-      ov.appendChild(e);
-    }
   }
-}
 
 let drag=null;
 map.addEventListener("pointerdown",e=>{
@@ -418,18 +388,18 @@ function moreSheet(){
 }
 function persistAll(){
   try{
-    localStorage.setItem("kerilla.pins", JSON.stringify(S.pins));
-    localStorage.setItem("kerilla.measure", JSON.stringify(S.measure));
-    localStorage.setItem("kerilla.geo", JSON.stringify(S.geofences));
+    localStorage.setItem("kerilla.pins.v2", JSON.stringify(S.pins));
+    localStorage.setItem("kerilla.measure.v2", JSON.stringify(S.measure));
+    localStorage.setItem("kerilla.geo.v2", JSON.stringify(S.geofences));
   }catch(e){}
 }
 function restoreAll(){
   try{
-    const p=JSON.parse(localStorage.getItem("kerilla.pins")||"null");
+    const p=JSON.parse(localStorage.getItem("kerilla.pins.v2")||"null");
     if(Array.isArray(p)) S.pins=p;
-    const m=JSON.parse(localStorage.getItem("kerilla.measure")||"null");
+    const m=JSON.parse(localStorage.getItem("kerilla.measure.v2")||"null");
     if(Array.isArray(m)) S.measure=m;
-    const g=JSON.parse(localStorage.getItem("kerilla.geo")||"null");
+    const g=JSON.parse(localStorage.getItem("kerilla.geo.v2")||"null");
     if(Array.isArray(g)) S.geofences=g;
   }catch(e){}
 }
@@ -717,7 +687,7 @@ function legend(){
 }
 
 async function boot(withGps){
-  restoreAll();
+  restoreAll(); geoChangeNotice();
   await checkVersion();
   META=await(await fetch("map-meta.json?v="+APP_V,{cache:"no-cache"})).json();
   applyTransform();
