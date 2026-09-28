@@ -22,3 +22,15 @@ render-clusters.py
 debug-zoomin.mjs
 bukti-visual.mjs
 tesseract-*.tar.gz
+kerilla-600dpi-1.png
+kerilla-600dpi.tif
+web-600dpi/tiles/
+web-600dpi/index.html
+web-600dpi/app.html
+web-600dpi/map.html
+web-600dpi/version.json
+web-600dpi/labels.png
+web-600dpi/labels.json
+web-600dpi/map-meta.json
+web-300dpi/tiles/
+kerilla-map-300dpi-1.png
