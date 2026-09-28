@@ -63,6 +63,16 @@ function applyTransform(){
   if(!META) return;
   META.transform = USE_LEGACY_TRANSFORM ? (META.transformLegacy || META.transform) : (META.transformNew || META.transform);
 }
+/* Auto-backup storan legacy bila suis transform (sekali sahaja) */
+let _transformBackedUp=false;
+function backupIfTransformSwitched(){
+  if(_transformBackedUp) return;
+  if(!USE_LEGACY_TRANSFORM && S.pins.length+ S.measure.length+ S.geofences.length > 0){
+    backupStorageLegacy();
+    _transformBackedUp=true;
+    toast('Storan legacy di-backup (kerilla.backup.legacy)', 2500);
+  }
+}
 const ll2pxT = (lon,lat,t) => { const d=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
   return { col:(t.E*dx-t.B*dy)/d, row:(-t.D*dx+t.A*dy)/d }; };
 /* ===== LAPISAN LABEL NOMBER TASK ===== */
@@ -353,6 +363,7 @@ function moreSheet(){
     ["geofence","hex","Geofence","Tanda kawasan bersaiz 150 m"],
     ["layers","layers","Lapisan","Tunjuk atau sorok pada peta"],
     ["dl","dl","Muat turun peta","Simpan salinan resolusi penuh"],
+    ["export","dl","Backup storan","Eksport Placemark/Measure/Geofence/Trek"],
     ["clear","undo","Kosongkan semua","Buang semua tanda pada peta"],
   ];
   let h='<div class="hint">Alat lain</div>';
@@ -372,6 +383,7 @@ function moreSheet(){
       if(o==="hist"){ histSheet(); }
       else if(o==="geofence"){ closeS(); setMode("geofence"); }
       else if(o==="dl"){ window.open("kerilla-map.png","_blank"); }
+      else if(o==="export"){ exportStorage(); }
       else if(o==="clear"){ S.pins=[]; S.measure=[]; S.geofences=[]; S.pts=[]; persistAll(); localStorage.removeItem("kerilla.hist"); render(); closeS(); toast("Semua dibuang",1600); }
       else if(o==="layers"){ toast("Track: "+S.pts.length+" · Placemark: "+S.pins.length,2200); }
     };
@@ -393,6 +405,38 @@ function restoreAll(){
     const g=JSON.parse(localStorage.getItem("kerilla.geo")||"null");
     if(Array.isArray(g)) S.geofences=g;
   }catch(e){}
+}
+/* ===== EXPORT & VERSI STORAN (sebelum suis transform) ===== */
+function exportStorage(){
+  try{
+    const data={
+      ver: 1,
+      at: new Date().toISOString(),
+      transform: META ? META.transform : null,
+      transformNote: 'legacy (sebelum suis 300dpi)',
+      pins: S.pins,
+      measure: S.measure,
+      geofences: S.geofences,
+      hist: histLoad(),
+    };
+    const json=JSON.stringify(data, null, 2);
+    const blob=new Blob([json], {type:'application/json'});
+    const u=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=u; a.download='kerilla-backup-'+Date.now()+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(u);
+    toast('Backup storan dieksport', 2200, 'ok');
+  }catch(e){ toast('Gagal export: '+e.message, 3000, 'err'); }
+}
+function backupStorageLegacy(){
+  try{
+    const bk={at:new Date().toISOString(), pins:S.pins, measure:S.measure, geofences:S.geofences};
+    const prev=JSON.parse(localStorage.getItem('kerilla.backup.legacy')||'[]');
+    prev.unshift(bk); while(prev.length>5) prev.pop();
+    localStorage.setItem('kerilla.backup.legacy', JSON.stringify(prev));
+    return true;
+  }catch(e){ return false; }
 }
 function histSheet(){
   const h0=histLoad();
@@ -650,6 +694,7 @@ async function boot(withGps){
   await checkVersion();
   META=await(await fetch("map-meta.json?v="+APP_V,{cache:"no-cache"})).json();
   applyTransform();
+  backupIfTransformSwitched();
   $("#hsub").textContent=META.gsdMeters.toFixed(2)+" m/px · Kelantan";
   S.vw=map.clientWidth; S.vh=map.clientHeight;
   fitCover();

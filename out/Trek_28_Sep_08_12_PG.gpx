@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Kerilla" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><name>Trek 28 Sep 08:12 PG</name><trkseg>
+    <trkpt lat="5.6793417" lon="102.0934317"><time>2026-09-28T00:11:45.466Z</time></trkpt>
+    <trkpt lat="5.679355" lon="102.0934483"><time>2026-09-28T00:11:47.343Z</time></trkpt>
+    <trkpt lat="5.6793516" lon="102.0934293"><time>2026-09-28T00:11:59.784Z</time></trkpt>
+    <trkpt lat="5.6793524" lon="102.0934057"><time>2026-09-28T00:12:02.369Z</time></trkpt>
+    <trkpt lat="5.6793493" lon="102.0933804"><time>2026-09-28T00:12:04.359Z</time></trkpt>
+  </trkseg></trk>
+</gpx>

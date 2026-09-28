@@ -57,6 +57,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--sand);color:var(
 .gps-debug-legacy .d{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
   background:#ef4444;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)}
 
+.pin-coord{position:absolute;z-index:11;pointer-events:none;transform:translate(-50%,-100%);
+  font:600 10px/1.2 ui-monospace,monospace;color:#0b3d2e;background:rgba(255,255,255,.92);
+  padding:2px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .pin-i{position:absolute;z-index:11;pointer-events:none;transform:translate(-50%,-100%);
   width:30px;height:38px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
 .pin-i svg{width:100%;height:100%}
@@ -376,7 +379,7 @@ background:var(--paper);color:var(--forest-d);display:flex;align-items:center;ju
 
 <script>
 /* APP_V: versi dirender oleh build. Tukar setiap deploy. */
-const APP_V="1123a3c8";
+const APP_V="f6bc2a1d";
 const TILE = 256;
 let META = null;
 /* ===== FLAG TOGOL TRANSFORM (untuk test fizikal lapangan) ===== */
@@ -441,6 +444,16 @@ const ll2px = (lon,lat) => { const t=META.transform;
 function applyTransform(){
   if(!META) return;
   META.transform = USE_LEGACY_TRANSFORM ? (META.transformLegacy || META.transform) : (META.transformNew || META.transform);
+}
+/* Auto-backup storan legacy bila suis transform (sekali sahaja) */
+let _transformBackedUp=false;
+function backupIfTransformSwitched(){
+  if(_transformBackedUp) return;
+  if(!USE_LEGACY_TRANSFORM && S.pins.length+ S.measure.length+ S.geofences.length > 0){
+    backupStorageLegacy();
+    _transformBackedUp=true;
+    toast('Storan legacy di-backup (kerilla.backup.legacy)', 2500);
+  }
 }
 const ll2pxT = (lon,lat,t) => { const d=t.A*t.E-t.B*t.D, dx=lon-t.C, dy=lat-t.F;
   return { col:(t.E*dx-t.B*dy)/d, row:(-t.D*dx+t.A*dy)/d }; };
@@ -599,7 +612,10 @@ function draw(sc,k){
     '<circle cx="12" cy="10" r="2.4" fill="#fff" stroke="none"/></svg>';
   for(const p of S.pins){ const f=ll2px(p.lon,p.lat), q=P(f.col,f.row);
     const e=document.createElement("div"); e.className="pin-i";
-    e.innerHTML=PINSVG; e.style.left=q.x+"px"; e.style.top=q.y+"px"; ov.appendChild(e); }
+    e.innerHTML=PINSVG; e.style.left=q.x+"px"; e.style.top=q.y+"px"; ov.appendChild(e);
+    const lbl=document.createElement("div"); lbl.className="pin-coord";
+    lbl.textContent=p.lat.toFixed(6)+", "+p.lon.toFixed(6);
+    lbl.style.left=q.x+"px"; lbl.style.top=(q.y-20)+"px"; ov.appendChild(lbl); }
   if(S.gps){ const f=ll2px(S.gps.lon,S.gps.lat), q=P(f.col,f.row);
     const e=document.createElement("div"); e.className="gps";
     e.style.left=q.x+"px"; e.style.top=q.y+"px";
@@ -729,6 +745,7 @@ function moreSheet(){
     ["geofence","hex","Geofence","Tanda kawasan bersaiz 150 m"],
     ["layers","layers","Lapisan","Tunjuk atau sorok pada peta"],
     ["dl","dl","Muat turun peta","Simpan salinan resolusi penuh"],
+    ["export","dl","Backup storan","Eksport Placemark/Measure/Geofence/Trek"],
     ["clear","undo","Kosongkan semua","Buang semua tanda pada peta"],
   ];
   let h='<div class="hint">Alat lain</div>';
@@ -748,6 +765,7 @@ function moreSheet(){
       if(o==="hist"){ histSheet(); }
       else if(o==="geofence"){ closeS(); setMode("geofence"); }
       else if(o==="dl"){ window.open("kerilla-map.png","_blank"); }
+      else if(o==="export"){ exportStorage(); }
       else if(o==="clear"){ S.pins=[]; S.measure=[]; S.geofences=[]; S.pts=[]; persistAll(); localStorage.removeItem("kerilla.hist"); render(); closeS(); toast("Semua dibuang",1600); }
       else if(o==="layers"){ toast("Track: "+S.pts.length+" · Placemark: "+S.pins.length,2200); }
     };
@@ -769,6 +787,38 @@ function restoreAll(){
     const g=JSON.parse(localStorage.getItem("kerilla.geo")||"null");
     if(Array.isArray(g)) S.geofences=g;
   }catch(e){}
+}
+/* ===== EXPORT & VERSI STORAN (sebelum suis transform) ===== */
+function exportStorage(){
+  try{
+    const data={
+      ver: 1,
+      at: new Date().toISOString(),
+      transform: META ? META.transform : null,
+      transformNote: 'legacy (sebelum suis 300dpi)',
+      pins: S.pins,
+      measure: S.measure,
+      geofences: S.geofences,
+      hist: histLoad(),
+    };
+    const json=JSON.stringify(data, null, 2);
+    const blob=new Blob([json], {type:'application/json'});
+    const u=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=u; a.download='kerilla-backup-'+Date.now()+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(u);
+    toast('Backup storan dieksport', 2200, 'ok');
+  }catch(e){ toast('Gagal export: '+e.message, 3000, 'err'); }
+}
+function backupStorageLegacy(){
+  try{
+    const bk={at:new Date().toISOString(), pins:S.pins, measure:S.measure, geofences:S.geofences};
+    const prev=JSON.parse(localStorage.getItem('kerilla.backup.legacy')||'[]');
+    prev.unshift(bk); while(prev.length>5) prev.pop();
+    localStorage.setItem('kerilla.backup.legacy', JSON.stringify(prev));
+    return true;
+  }catch(e){ return false; }
 }
 function histSheet(){
   const h0=histLoad();
@@ -1026,6 +1076,7 @@ async function boot(withGps){
   await checkVersion();
   META=await(await fetch("map-meta.json?v="+APP_V,{cache:"no-cache"})).json();
   applyTransform();
+  backupIfTransformSwitched();
   $("#hsub").textContent=META.gsdMeters.toFixed(2)+" m/px · Kelantan";
   S.vw=map.clientWidth; S.vh=map.clientHeight;
   fitCover();
