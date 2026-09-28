@@ -3,6 +3,7 @@ let META = null;
 /* ===== FLAG TOGOL TRANSFORM (untuk test fizikal lapangan) ===== */
 const USE_LEGACY_TRANSFORM = true;  // true=lama(live), false=baru(300dpi GPTS betul)
 const DEBUG_DUAL_GPS = false;       // true=papar 2 dot GPS serentak (merah=lama, hijau=baru)
+const SHOW_LABELS = false;         // false=matikan overlay label lama (untuk semakan peta tulen)
 const S = {
   scale:.5, cx:0, cy:0, vw:0, vh:0, tiles:new Map(),
   gps:null, acc:null, watch:null, follow:true,
@@ -153,6 +154,30 @@ function fitCover(){
   S.cx = META.width/2;
   S.cy = S.gps ? ll2px(S.gps.lon,S.gps.lat).row : META.height/2;
 }
+function gotoCoordPrompt(){
+  const v=prompt('Pergi ke koordinat (lat, lon):', '5.68476, 102.10515');
+  if(!v) return;
+  const parts=v.split(',').map(x=>parseFloat(x.trim()));
+  if(parts.length<2 || isNaN(parts[0]) || isNaN(parts[1])){ toast('Format: lat, lon', 2500, 'err'); return; }
+  goToCoord(parts[0], parts[1], 6);
+}
+function goToCoord(lat, lon, sc){
+  if(!META) return;
+  S.follow=false;
+  const f=ll2px(lon, lat);
+  S.cx=f.col; S.cy=f.row;
+  if(sc) S.scale=Math.max(minScale(), Math.min(12, sc));
+  render();
+  const pin=document.createElement("div");
+  pin.className="pin-i";
+  const q=P(f.col,f.row);
+  pin.style.left=q.x+"px"; pin.style.top=q.y+"px";
+  pin.innerHTML='<svg viewBox="0 0 24 24" fill="#e8823c" stroke="#fff" stroke-width="1.3"><path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.4" fill="#fff" stroke="none"/></svg>';
+  pin.style.transform="translate(-50%,-100%)";
+  ov.appendChild(pin);
+  setTimeout(()=>pin.remove(), 5000);
+  toast("Pergi ke "+lat.toFixed(5)+", "+lon.toFixed(5), 2000);
+}
 function render(){
   if(!META) return;
   const cw=map.clientWidth||window.innerWidth||360;
@@ -249,7 +274,7 @@ function draw(sc,k){
     ov.appendChild(e2);
   }
   // ===== LABEL NOMBER (sentiasa nampak + de-clutter) =====
-  if(LBL && LBL.length){
+  if(SHOW_LABELS && LBL && LBL.length){
     const minh=14;            // saiz min skrin untuk label (boleh baca)
     const maxh=300;           // saiz max (zoom dalam: label crop lebih tajam dari tile blur)
     const placed=[];          // kotak label yang sudah diletak (untuk elak tindih)
@@ -364,6 +389,7 @@ function moreSheet(){
     ["layers","layers","Lapisan","Tunjuk atau sorok pada peta"],
     ["dl","dl","Muat turun peta","Simpan salinan resolusi penuh"],
     ["export","dl","Backup storan","Eksport Placemark/Measure/Geofence/Trek"],
+    ["goto","pin","Pergi ke koordinat","Masukkan lat, lon untuk pusat peta"],
     ["clear","undo","Kosongkan semua","Buang semua tanda pada peta"],
   ];
   let h='<div class="hint">Alat lain</div>';
@@ -384,6 +410,7 @@ function moreSheet(){
       else if(o==="geofence"){ closeS(); setMode("geofence"); }
       else if(o==="dl"){ window.open("kerilla-map.png","_blank"); }
       else if(o==="export"){ exportStorage(); }
+      else if(o==="goto"){ gotoCoordPrompt(); }
       else if(o==="clear"){ S.pins=[]; S.measure=[]; S.geofences=[]; S.pts=[]; persistAll(); localStorage.removeItem("kerilla.hist"); render(); closeS(); toast("Semua dibuang",1600); }
       else if(o==="layers"){ toast("Track: "+S.pts.length+" · Placemark: "+S.pins.length,2200); }
     };
